@@ -53,6 +53,7 @@ def create_bot() -> commands.Bot:
         _build_agents()
         scheduler = setup_scheduler(bot)
         scheduler.start()
+        bot._scheduler = scheduler  # expose for !jobs command
         logger.log_event("bot_ready", {"user": str(bot.user), "guilds": len(bot.guilds)})
         print(f"[OpenChief] Online as {bot.user}")
 
@@ -145,5 +146,30 @@ def create_bot() -> commands.Bot:
         ch_ctx = ctx_mgr.get_or_create(ctx_cmd.channel.id)
         ch_ctx.clear()
         await ctx_cmd.send("🗑️ Context cleared for this channel.")
+
+    @bot.command(name="digest")
+    async def cmd_digest(ctx_cmd):
+        """Trigger an on-demand digest report immediately."""
+        from cron.jobs.digest import job_digest
+        await ctx_cmd.send("📋 Generating digest...")
+        try:
+            await job_digest(bot)
+        except Exception as exc:
+            await ctx_cmd.send(f"⚠️ Digest error: {exc}")
+
+    @bot.command(name="jobs")
+    async def cmd_jobs(ctx_cmd):
+        """List all scheduled cron jobs and their next run times."""
+        sched = getattr(bot, "_scheduler", None)
+        if sched is None:
+            await ctx_cmd.send("Scheduler not attached to bot instance.")
+            return
+        lines = ["**Scheduled Jobs:**"]
+        for job in sched.get_jobs():
+            next_run = str(job.next_run_time)[:19] if job.next_run_time else "paused"
+            job_line = "- `" + job.id + "` next: " + next_run + " UTC"
+            lines.append(job_line)
+        await ctx_cmd.send("
+".join(lines))
 
     return bot
