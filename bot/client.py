@@ -169,7 +169,6 @@ def create_bot() -> commands.Bot:
             next_run = str(job.next_run_time)[:19] if job.next_run_time else "paused"
             job_line = "- `" + job.id + "` next: " + next_run + " UTC"
             lines.append(job_line)
-        await ctx_cmd.send("
-".join(lines))
+        await ctx_cmd.send("\n".join(lines))
 
     return bot
