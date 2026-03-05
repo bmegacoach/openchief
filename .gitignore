@@ -16,3 +16,8 @@ build/
 venv/
 node_modules/
 temp_sites/
+
+# A0 integration runtime files
+data/contexts.db-wal
+data/contexts.db-shm
+dashboard/data/conference_log.json
