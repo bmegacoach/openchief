@@ -20,6 +20,7 @@ async def init_db():
     p = _db_path()
     p.parent.mkdir(parents=True, exist_ok=True)
     async with aiosqlite.connect(p) as db:
+        await db.execute("PRAGMA journal_mode=WAL")
         await db.execute("""
             CREATE TABLE IF NOT EXISTS contexts (
                 channel_id    TEXT PRIMARY KEY,
@@ -31,19 +32,19 @@ async def init_db():
                 health_pct    REAL    DEFAULT 0.0
             )
         """)
-        await db.execute("PRAGMA journal_mode=WAL")
         await db.commit()
 
 
 async def get_or_create(channel_id: str, context_type: str = "channel") -> str:
     """Return existing a0_context_id or create a new one for channel_id."""
     p = _db_path()
-    now = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
     async with aiosqlite.connect(p) as db:
         db.row_factory = aiosqlite.Row
-        row = await (await db.execute(
+        async with db.execute(
             "SELECT a0_context_id FROM contexts WHERE channel_id=?", (channel_id,)
-        )).fetchone()
+        ) as cur:
+            row = await cur.fetchone()
         if row:
             await db.execute(
                 "UPDATE contexts SET last_used=? WHERE channel_id=?", (now, channel_id)
@@ -75,11 +76,12 @@ async def all_active() -> list[dict]:
     p = _db_path()
     async with aiosqlite.connect(p) as db:
         db.row_factory = aiosqlite.Row
-        rows = await (await db.execute("""
+        async with db.execute("""
             SELECT * FROM contexts
             WHERE last_used > datetime('now', '-7 days')
             ORDER BY last_used DESC
-        """)).fetchall()
+        """) as cur:
+            rows = await cur.fetchall()
         return [dict(r) for r in rows]
 
 

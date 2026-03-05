@@ -35,7 +35,7 @@ async def test_all_active_returns_rows(tmp_db):
     await mod.get_or_create("chan-1")
     await mod.get_or_create("chan-2")
     rows = await mod.all_active()
-    assert len(rows) >= 2
+    assert len(rows) == 2
 
 @pytest.mark.asyncio
 async def test_delete_context(tmp_db):
@@ -66,3 +66,24 @@ async def test_update_health(tmp_db):
     row = next(r for r in rows if r["channel_id"] == "health-test")
     assert row["message_count"] == 15
     assert abs(row["health_pct"] - 42.5) < 0.01
+
+@pytest.mark.asyncio
+async def test_all_active_excludes_old_rows(tmp_db):
+    """Rows last_used more than 7 days ago must NOT appear in all_active()."""
+    import importlib, memory.context_store as mod
+    importlib.reload(mod)
+    await mod.init_db()
+    # Insert a row then manually set its last_used to 8 days ago
+    import aiosqlite
+    from pathlib import Path
+    await mod.get_or_create("old-channel")
+    db_path = Path(tmp_db)
+    async with aiosqlite.connect(db_path) as db:
+        await db.execute(
+            "UPDATE contexts SET last_used=datetime('now', '-8 days') WHERE channel_id=?",
+            ("old-channel",)
+        )
+        await db.commit()
+    rows = await mod.all_active()
+    ids = [r["channel_id"] for r in rows]
+    assert "old-channel" not in ids
