@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OpenChief Control Center</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <h1>⚡ OpenChief Control Center</h1>
+  <p class="subtitle">Agent Zero × Chief System — Base Camp</p>
+
+  <div class="links">
+    <a class="link-btn" id="a0-link" href="http://localhost:50001" target="_blank">🤖 Agent Zero</a>
+    <a class="link-btn" href="http://localhost:3000/portfolio" target="_blank">📊 Portfolio Manager</a>
+    <a class="link-btn" href="https://discord.com/channels/1468061349882892415" target="_blank">💬 Discord</a>
+  </div>
+
+  <div class="camp-grid">
+    <div class="cabin">
+      <div class="cabin-icon">🗂</div>
+      <div class="cabin-name">ChiefPM</div>
+      <div class="status-light idle"></div>
+      <div class="status-text">project_mgmt</div>
+    </div>
+    <div class="cabin">
+      <div class="cabin-icon">💻</div>
+      <div class="cabin-name">ChiefDev</div>
+      <div class="status-light idle"></div>
+      <div class="status-text">browser_ops</div>
+    </div>
+    <div class="cabin">
+      <div class="cabin-icon">📊</div>
+      <div class="cabin-name">ChiefFin</div>
+      <div class="status-light idle"></div>
+      <div class="status-text">treasury</div>
+    </div>
+    <div class="cabin">
+      <div class="cabin-icon">🔍</div>
+      <div class="cabin-name">ChiefAnalyst</div>
+      <div class="status-light idle"></div>
+      <div class="status-text">trading_desk</div>
+    </div>
+    <div class="cabin">
+      <div class="cabin-icon">📣</div>
+      <div class="cabin-name">ChiefComms</div>
+      <div class="status-light idle"></div>
+      <div class="status-text">content_pipeline</div>
+    </div>
+  </div>
+
+  <div class="log-panel">
+    <div class="log-header">
+      <span>📡 Agents Conference</span>
+      <span id="last-refresh">—</span>
+    </div>
+    <div id="log-entries"><div class="log-empty">Loading…</div></div>
+  </div>
+
+  <script>
+    async function loadLog() {
+      try {
+        const res = await fetch('data/conference_log.json?t=' + Date.now());
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const entries = await res.json();
+        const container = document.getElementById('log-entries');
+        if (!entries.length) {
+          container.innerHTML = '<div class="log-empty">No messages yet in #agents-conference</div>';
+        } else {
+          container.innerHTML = entries.map(e => {
+            const t = new Date(e.timestamp).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+            return '<div class="log-entry">' +
+              '<span class="log-author">' + e.author + '</span>' +
+              '<span class="log-time">' + t + '</span>' +
+              '<div class="log-content">' + e.content.replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</div>' +
+              '</div>';
+          }).join('');
+        }
+        document.getElementById('last-refresh').textContent = 'Updated ' + new Date().toLocaleTimeString();
+      } catch (err) {
+        document.getElementById('log-entries').innerHTML =
+          '<div class="log-empty">Could not load log: ' + err.message + '</div>';
+      }
+    }
+    loadLog();
+    setInterval(loadLog, 30000);
+  </script>
+</body>
+</html>

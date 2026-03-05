@@ -1,0 +1,97 @@
+/* dashboard/style.css — OpenChief pixel-camp theme */
+:root {
+  --bg: #0a0e1a;
+  --panel: #111827;
+  --border: #1e2d40;
+  --green: #22c55e;
+  --yellow: #eab308;
+  --red: #ef4444;
+  --gray: #374151;
+  --text: #e2e8f0;
+  --muted: #64748b;
+  --accent: #3b82f6;
+  --font: "Courier New", monospace;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 13px;
+  min-height: 100vh;
+  padding: 16px;
+}
+
+h1 { font-size: 20px; letter-spacing: 2px; text-transform: uppercase; color: var(--accent); margin-bottom: 4px; }
+.subtitle { color: var(--muted); font-size: 11px; margin-bottom: 24px; }
+
+.links { display: flex; gap: 12px; margin-bottom: 24px; flex-wrap: wrap; }
+.link-btn {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 8px 16px;
+  color: var(--accent);
+  text-decoration: none;
+  font-size: 12px;
+  font-family: var(--font);
+  transition: border-color 0.2s;
+}
+.link-btn:hover { border-color: var(--accent); }
+
+.camp-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 12px;
+  margin-bottom: 32px;
+}
+
+@media (max-width: 700px) { .camp-grid { grid-template-columns: repeat(2, 1fr); } }
+
+.cabin {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 16px 12px;
+  text-align: center;
+  transition: border-color 0.2s;
+}
+.cabin:hover { border-color: var(--accent); }
+.cabin-icon { font-size: 32px; line-height: 1; margin-bottom: 8px; }
+.cabin-name { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 10px; }
+.status-light { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-bottom: 6px; }
+.status-light.online   { background: var(--green);  box-shadow: 0 0 6px var(--green); }
+.status-light.idle     { background: var(--yellow); box-shadow: 0 0 6px var(--yellow); }
+.status-light.offline  { background: var(--red);    box-shadow: 0 0 6px var(--red); }
+.status-light.disabled { background: var(--gray); }
+.status-text { font-size: 10px; color: var(--muted); }
+
+.log-panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  max-height: 420px;
+  overflow-y: auto;
+}
+.log-header {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--accent);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: sticky;
+  top: 0;
+  background: var(--panel);
+}
+.log-entry { padding: 10px 14px; border-bottom: 1px solid var(--border); line-height: 1.6; }
+.log-entry:last-child { border-bottom: none; }
+.log-author { color: var(--accent); font-weight: bold; }
+.log-time   { color: var(--muted); font-size: 10px; float: right; }
+.log-content { margin-top: 4px; word-break: break-word; }
+.log-empty  { padding: 24px; text-align: center; color: var(--muted); }
