@@ -18,20 +18,18 @@ async def test_ask_a0_offline_raises(monkeypatch):
     from agents.a0_client import ask_a0
     with pytest.raises(Exception):
         await ask_a0("hello", "ctx-test")
-    # Restore
-    monkeypatch.setenv("A0_BASE_URL", "http://localhost:50001")
 
 
 @pytest.mark.asyncio
-async def test_ask_a0_reads_env_per_call(monkeypatch):
-    """ask_a0 must read A0_BASE_URL from os.getenv on each call, not at module load."""
-    from agents.a0_client import ask_a0
-    # Change URL after import — should take effect without reload
+async def test_ask_a0_reads_env_per_call_after_import(monkeypatch):
+    """ask_a0 reads A0_BASE_URL fresh on every call — no reload needed."""
+    # Import BEFORE changing the env var (proves no caching at import time)
+    from agents.a0_client import ask_a0  # noqa: F811 — re-import is intentional
+    # Now change the URL *after* the import
     monkeypatch.setenv("A0_BASE_URL", "http://localhost:1")
+    # Should still pick up the new bad URL and raise
     with pytest.raises(Exception):
-        await ask_a0("test", "ctx-123")
-    # Restore
-    monkeypatch.setenv("A0_BASE_URL", "http://localhost:50001")
+        await ask_a0("test", "ctx-dynamic")
 
 def test_a0_client_imports():
     from agents.a0_client import ask_a0, send_directive, ping
