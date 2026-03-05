@@ -5,19 +5,19 @@ All OpenChief -> A0 communication flows through here.
 import os
 import aiohttp
 
-A0_BASE_URL = os.getenv("A0_BASE_URL", "http://localhost:50001")
-A0_API_KEY  = os.getenv("A0_API_KEY", "")
+_DEFAULT_BASE = "http://localhost:50001"
 
 
 def _headers() -> dict:
-    if A0_API_KEY:
-        return {"Authorization": f"Bearer {A0_API_KEY}"}
+    key = os.getenv("A0_API_KEY", "")
+    if key:
+        return {"Authorization": f"Bearer {key}"}
     return {}
 
 
 async def ask_a0(prompt: str, context_id: str, system_role: str = "") -> str:
     """Send a prompt to Agent Zero and return the response text."""
-    base = os.getenv("A0_BASE_URL", A0_BASE_URL)
+    base = os.getenv("A0_BASE_URL", _DEFAULT_BASE)
     payload: dict = {"message": prompt, "context_id": context_id}
     if system_role:
         payload["system"] = system_role
@@ -46,7 +46,7 @@ async def send_directive(text: str, context_ids: list) -> None:
 async def ping() -> bool:
     """Return True if Agent Zero responds on /health."""
     try:
-        base = os.getenv("A0_BASE_URL", A0_BASE_URL)
+        base = os.getenv("A0_BASE_URL", _DEFAULT_BASE)
         async with aiohttp.ClientSession() as session:
             async with session.get(
                 f"{base}/health",
