@@ -2,6 +2,7 @@ import os
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 
+from memory.context_store import create_ephemeral
 from cron.jobs.analytics import job_analytics
 from cron.jobs.monitoring import job_monitoring
 from cron.jobs.crm_sync import job_crm_sync
@@ -19,6 +20,18 @@ from cron.jobs.digest import job_digest
 _DIGEST_HOURS = int(os.getenv("DIGEST_INTERVAL_HOURS", "24"))
 
 
+def _with_ephemeral(job_fn, label: str):
+    """Wrap a cron job to receive a fresh ephemeral context_id each run."""
+    async def _wrapped(bot):
+        context_id = create_ephemeral(label)
+        try:
+            await job_fn(bot, context_id=context_id)
+        except TypeError:
+            # Existing jobs that don't accept context_id yet — call without it
+            await job_fn(bot)
+    return _wrapped
+
+
 def _digest_hour_list(interval: int) -> list:
     """Return list of UTC hours at which to fire the digest job."""
     if interval >= 24:
@@ -31,20 +44,60 @@ def setup_scheduler(bot) -> AsyncIOScheduler:
     scheduler = AsyncIOScheduler(timezone="UTC")
 
     # Fixed intel-gathering jobs (1AM-7AM UTC)
-    scheduler.add_job(job_analytics,   CronTrigger(hour=1, minute=0),  args=[bot], id="analytics")
-    scheduler.add_job(job_monitoring,  CronTrigger(hour=1, minute=15), args=[bot], id="monitoring")
-    scheduler.add_job(job_crm_sync,    CronTrigger(hour=2, minute=0),  args=[bot], id="crm_sync")
-    scheduler.add_job(job_treasury,    CronTrigger(hour=3, minute=0),  args=[bot], id="treasury")
-    scheduler.add_job(job_marketplace, CronTrigger(hour=4, minute=0),  args=[bot], id="marketplace")
-    scheduler.add_job(job_portfolio,   CronTrigger(hour=5, minute=0),  args=[bot], id="portfolio")
-    scheduler.add_job(job_research,    CronTrigger(hour=6, minute=0),  args=[bot], id="research")
-    scheduler.add_job(job_content,     CronTrigger(hour=7, minute=0),  args=[bot], id="content")
+    scheduler.add_job(
+        _with_ephemeral(job_analytics, "analytics"),
+        CronTrigger(hour=1, minute=0),
+        args=[bot],
+        id="analytics",
+    )
+    scheduler.add_job(
+        _with_ephemeral(job_monitoring, "monitoring"),
+        CronTrigger(hour=1, minute=15),
+        args=[bot],
+        id="monitoring",
+    )
+    scheduler.add_job(
+        _with_ephemeral(job_crm_sync, "crm_sync"),
+        CronTrigger(hour=2, minute=0),
+        args=[bot],
+        id="crm_sync",
+    )
+    scheduler.add_job(
+        _with_ephemeral(job_treasury, "treasury"),
+        CronTrigger(hour=3, minute=0),
+        args=[bot],
+        id="treasury",
+    )
+    scheduler.add_job(
+        _with_ephemeral(job_marketplace, "marketplace"),
+        CronTrigger(hour=4, minute=0),
+        args=[bot],
+        id="marketplace",
+    )
+    scheduler.add_job(
+        _with_ephemeral(job_portfolio, "portfolio"),
+        CronTrigger(hour=5, minute=0),
+        args=[bot],
+        id="portfolio",
+    )
+    scheduler.add_job(
+        _with_ephemeral(job_research, "research"),
+        CronTrigger(hour=6, minute=0),
+        args=[bot],
+        id="research",
+    )
+    scheduler.add_job(
+        _with_ephemeral(job_content, "content"),
+        CronTrigger(hour=7, minute=0),
+        args=[bot],
+        id="content",
+    )
 
     # Configurable digest - controlled by DIGEST_INTERVAL_HOURS
     digest_hours = _digest_hour_list(_DIGEST_HOURS)
     for i, hour in enumerate(digest_hours):
         scheduler.add_job(
-            job_digest,
+            _with_ephemeral(job_digest, f"digest_{i}"),
             CronTrigger(hour=hour, minute=0),
             args=[bot],
             id=f"digest_{i}",
