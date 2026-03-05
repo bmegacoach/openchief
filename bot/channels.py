@@ -20,6 +20,8 @@ CHANNELS = {
     "daily_digest":     _ch("CHANNEL_DAILY_DIGEST", "1468062917755801640"),
     "project_mgmt":     _ch("CHANNEL_PROJECT_MGMT"),
     "browser_ops":      _ch("CHANNEL_BROWSER_OPS"),
+    "agents_conference":   _ch("CHANNEL_AGENTS_CONFERENCE"),   # Chiefs post summaries here
+    "openchief_console":   _ch("CHANNEL_OPENCHIEF_CONSOLE"),   # HealthMonitor alerts here
 }
 
 # Reverse map: channel_id -> name (for logging)
