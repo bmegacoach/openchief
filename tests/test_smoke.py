@@ -43,14 +43,29 @@ def test_import_channels():
     assert isinstance(CHANNEL_NAMES, dict)
 
 
-def test_import_context_manager():
-    from memory.channel_ctx import ContextManager
-    assert ContextManager is not None
+def test_import_context_store():
+    from memory.context_store import get_or_create, init_db, create_ephemeral, all_active
+    assert callable(get_or_create) and callable(init_db)
 
 
 def test_import_base_agent():
-    from agents.base_agent import BaseAgent
-    assert BaseAgent is not None
+    from agents.base_agent import BaseAgent, init_store
+    assert BaseAgent is not None and callable(init_store)
+
+
+def test_import_a0_client():
+    from agents.a0_client import ask_a0, send_directive, ping
+    assert callable(ask_a0) and callable(send_directive) and callable(ping)
+
+
+def test_import_health_monitor():
+    from health.monitor import HealthMonitor
+    assert HealthMonitor is not None
+
+
+def test_import_discord_bridge():
+    from tools.discord_bridge import poll_once, run, fetch_recent_messages
+    assert callable(poll_once) and callable(run)
 
 
 def test_import_all_agents():
