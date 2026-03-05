@@ -1,17 +1,32 @@
-import os
+"""
+Base class for all OpenChief agents.
+All LLM calls now route through Agent Zero via a0_client.
+Context is stored in SQLite via context_store (survives restarts).
+"""
 import asyncio
 import discord
-import anthropic
+from agents import a0_client
+from memory.context_store import get_or_create, init_db, delete_context, _db_path
 from event_logging.event_logger import EventLogger
+
+_initialized_path = None
+
+
+async def init_store():
+    """Call once at bot startup to ensure SQLite tables exist."""
+    global _initialized_path
+    current_path = str(_db_path())
+    if _initialized_path != current_path:
+        await init_db()
+        _initialized_path = current_path
 
 
 class BaseAgent:
     """
-    Base class for all OpenChief agents.
-    Handles: LLM calls, message routing, context management, Discord posting.
+    Base class for all OpenChief Chiefs.
+    _call_llm routes to Agent Zero; context persists in SQLite.
     """
 
-    MAX_CONTEXT = 20
     MAX_DISCORD_MSG = 1900
 
     def __init__(self, bot, name: str, channel_key: str, system_prompt: str):
@@ -20,57 +35,38 @@ class BaseAgent:
         self.channel_key = channel_key
         self.system_prompt = system_prompt
         self.logger = EventLogger()
-        self.context: list = []
 
-        api_key = os.getenv("ANTHROPIC_API_KEY", "")
-        self.llm = anthropic.Anthropic(api_key=api_key) if api_key else None
-        self.model = os.getenv("LLM_MODEL", "claude-opus-4-5")
-
-    async def handle_message(self, message: discord.Message, clean_content: str):
-        """Entry point: receive a Discord message, respond via LLM."""
-        async with message.channel.typing():
-            try:
-                reply = await self._call_llm(message.author.display_name, clean_content)
-                await self._send_chunks(message.channel, reply)
-                self.logger.log_event("agent_response", {
-                    "agent": self.name,
-                    "channel": self.channel_key,
-                    "user": str(message.author),
-                    "reply_len": len(reply),
-                })
-            except Exception as e:
-                err_msg = f"⚠️ **{self.name}** encountered an error: `{str(e)[:120]}`"
-                await message.channel.send(err_msg)
-                self.logger.log_event("agent_error", {"agent": self.name, "error": str(e)})
+    async def handle_message(self, content: str, author: str) -> str:
+        """
+        Receive content + author string, route to A0, return reply.
+        Sending/redaction is handled by bot/client.py.
+        """
+        try:
+            reply = await self._call_llm(author, content)
+            self.logger.log_event("agent_response", {
+                "agent": self.name,
+                "channel": self.channel_key,
+                "user": author,
+                "reply_len": len(reply),
+            })
+            return reply
+        except Exception as e:
+            self.logger.log_event("agent_error", {"agent": self.name, "error": str(e)})
+            raise
 
     async def _call_llm(self, author: str, content: str) -> str:
-        """Call Claude API with sliding context window."""
-        if not self.llm:
-            return (
-                f"🤖 **{self.name}** is online but `ANTHROPIC_API_KEY` is not set. "
-                "Add your key to `.env` to enable AI responses."
-            )
-
-        self.context.append({"role": "user", "content": f"{author}: {content}"})
-        if len(self.context) > self.MAX_CONTEXT:
-            self.context = self.context[-self.MAX_CONTEXT:]
-
-        response = self.llm.messages.create(
-            model=self.model,
-            max_tokens=1024,
-            system=self.system_prompt,
-            messages=self.context,
-        )
-        reply = response.content[0].text
-        self.context.append({"role": "assistant", "content": reply})
-        return reply
+        """Route to Agent Zero with this Chief's system prompt and persisted context."""
+        context_id = await get_or_create(self.channel_key, context_type="chief")
+        prompt = f"{author}: {content}"
+        return await a0_client.ask_a0(prompt, context_id, self.system_prompt)
 
     async def _send_chunks(self, channel: discord.abc.Messageable, text: str):
-        """Send a long message in safe chunks."""
+        """Send a long message in safe chunks <= MAX_DISCORD_MSG chars."""
         if len(text) <= self.MAX_DISCORD_MSG:
             await channel.send(text)
             return
-        chunks = [text[i:i+self.MAX_DISCORD_MSG] for i in range(0, len(text), self.MAX_DISCORD_MSG)]
+        chunks = [text[i:i + self.MAX_DISCORD_MSG]
+                  for i in range(0, len(text), self.MAX_DISCORD_MSG)]
         for chunk in chunks:
             await channel.send(chunk)
             await asyncio.sleep(0.3)
@@ -87,6 +83,7 @@ class BaseAgent:
                 "reason": "channel_not_found",
             })
 
-    def clear_context(self):
-        self.context = []
+    async def clear_context(self, channel_id: int = 0):
+        """Delete A0 context for this Chief (keyed by channel_key)."""
+        await delete_context(self.channel_key)
         self.logger.log_event("context_cleared", {"agent": self.name})
