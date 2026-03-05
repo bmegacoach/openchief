@@ -68,6 +68,10 @@ def create_bot() -> commands.Bot:
         scheduler.start()
         bot._scheduler = scheduler
 
+        # Start conference room bridge (polls #agents-conference → dashboard JSON)
+        from tools.discord_bridge import run as bridge_run
+        asyncio.create_task(bridge_run())
+
         try:
             synced = await bot.tree.sync()
             logger.log_event("slash_synced", {"count": len(synced)})
