@@ -8,6 +8,7 @@ Main Discord bot client.
 """
 import os
 import asyncio
+import logging
 import discord
 from discord import app_commands
 from discord.ext import commands
@@ -29,8 +30,20 @@ from cron.scheduler import setup_scheduler
 from event_logging.event_logger import EventLogger
 
 logger = EventLogger()
+log = logging.getLogger(__name__)
 
 TROY_DISCORD_ID = int(os.getenv("TROY_DISCORD_ID", "0"))
+
+
+async def send_to_channel(bot, channel_id: int, message: str) -> None:
+    """Send a message to a Discord channel by ID, splitting if >1900 chars."""
+    channel = bot.get_channel(channel_id)
+    if not channel:
+        log.warning("send_to_channel: channel %s not found", channel_id)
+        return
+    chunks = [message[i:i+1900] for i in range(0, len(message), 1900)]
+    for chunk in chunks:
+        await channel.send(chunk)
 
 
 def create_bot() -> commands.Bot:
