@@ -5,18 +5,39 @@ Reads QUEUE.md from the Chief OS monorepo and posts SWOT/WBS to Discord.
 import os
 import re
 import logging
+import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 
 log = logging.getLogger(__name__)
 
-QUEUE_PATH = Path(os.getenv(
+CHIEF_OS_PATH = Path(os.getenv(
     "CHIEF_OS_PATH",
     str(Path(__file__).parent.parent.parent / "Chief OS")
-)) / "QUEUE.md"
+))
+QUEUE_PATH = CHIEF_OS_PATH / "QUEUE.md"
+
+
+def _pull_queue_repo() -> None:
+    """git pull on the chief-system repo so heartbeat always reads live QUEUE.md."""
+    try:
+        result = subprocess.run(
+            ["git", "pull", "--ff-only", "origin", "main"],
+            cwd=CHIEF_OS_PATH,
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+        if result.returncode == 0:
+            log.info("[heartbeat] git pull OK: %s", result.stdout.strip().splitlines()[-1])
+        else:
+            log.warning("[heartbeat] git pull failed: %s", result.stderr.strip())
+    except Exception as exc:
+        log.warning("[heartbeat] git pull error: %s", exc)
 
 
 def _read_queue() -> str:
+    _pull_queue_repo()
     if not QUEUE_PATH.exists():
         log.warning("QUEUE.md not found at %s", QUEUE_PATH)
         return ""
