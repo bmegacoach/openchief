@@ -12,6 +12,7 @@ from cron.jobs.portfolio import job_portfolio
 from cron.jobs.research import job_research
 from cron.jobs.content import job_content
 from cron.jobs.digest import job_digest
+from cron.jobs.heartbeat import job_heartbeat
 
 # How often to post the digest (hours). Set via .env DIGEST_INTERVAL_HOURS.
 # 24 = once daily at 8AM UTC
@@ -92,6 +93,16 @@ def setup_scheduler(bot) -> AsyncIOScheduler:
         args=[bot],
         id="content",
     )
+
+    # 4-hour portfolio heartbeat fires at :30 past each 4-hour mark (0, 4, 8, 12, 16, 20 UTC)
+    for _hb_hour in range(0, 24, 4):
+        scheduler.add_job(
+            _with_ephemeral(job_heartbeat, f"heartbeat_{_hb_hour}"),
+            CronTrigger(hour=_hb_hour, minute=30),
+            args=[bot],
+            id=f"heartbeat_{_hb_hour}",
+        )
+    print("[Scheduler] Portfolio heartbeat: every 4h at :30 UTC")
 
     # Configurable digest - controlled by DIGEST_INTERVAL_HOURS
     digest_hours = _digest_hour_list(_DIGEST_HOURS)
