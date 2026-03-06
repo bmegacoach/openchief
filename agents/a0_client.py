@@ -1,19 +1,19 @@
 """
-Single HTTP bridge to Agent Zero (localhost:50001).
+Single HTTP bridge to Agent Zero (localhost:5000).
 All OpenChief -> A0 communication flows through here.
 """
 import logging
 import os
 import aiohttp
 
-_DEFAULT_BASE = "http://localhost:50001"
+_DEFAULT_BASE = "http://localhost:5000"
 _log = logging.getLogger(__name__)
 
 
 def _headers() -> dict:
     key = os.getenv("A0_API_KEY", "")
     if key:
-        return {"Authorization": f"Bearer {key}"}
+        return {"X-API-KEY": key}
     return {}
 
 
@@ -25,7 +25,7 @@ async def ask_a0(prompt: str, context_id: str, system_role: str = "") -> str:
         payload["system"] = system_role
     async with aiohttp.ClientSession() as session:
         async with session.post(
-            f"{base}/agent/dispatch",
+            f"{base}/api_message",
             json=payload,
             headers=_headers(),
             timeout=aiohttp.ClientTimeout(total=120),
